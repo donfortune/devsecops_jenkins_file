@@ -45,28 +45,16 @@ pipeline {
                         sh '/usr/local/bin/docker pull zricethezav/gitleaks:latest'
                         sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/code zricethezav/gitleaks:latest detect --source="/code" --verbose'
                     }
-
                 }
-                    
-                
             }
+            
         }
-        stage('SAST with NodeJSScan') {
+        stage('Code analysis with njsscan') {
             steps {
-                // Pull the latest NodeJSScan Docker image
                 sh '/usr/local/bin/docker pull opensecurity/nodejsscan:latest'
-                
-                // Run the scan on the project directory
-                sh '''
-                /usr/local/bin/docker run --rm -v $(pwd):/app opensecurity/nodejsscan:latest \
-                    --src /app --output /app/nodejsscan_report.json
-                '''
-                
-                // Display scan results if necessary
-                echo "NodeJSScan completed. Check nodejsscan_report.json for details."
+                sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src '
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
