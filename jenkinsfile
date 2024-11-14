@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+    tools {
+        nodejs 'node18'
+    }
+    stages {
+        stage('Check Out') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://gitlab.com/twn-devsecops-bootcamp/latest/juice-shop']])
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Building..'
+            }
+        }
+        stage('Prepare') {
+            steps {
+                sh "npm install -g yarn"
+                echo 'Preparing..'
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    // Unstash node_modules cache if exists
+                    try {
+                        unstash 'node-modules'
+                    } catch (e) {
+                        echo "No stash found for node_modules, running fresh install"
+                    }
+                    
+                    sh 'yarn install'
+
+                    // Stash node_modules for future use
+                    stash includes: 'node_modules/**/*', name: 'node-modules'
+                }
+                sh 'yarn test'
+            }
+        }
+        stage('Scan Code with Gitleaks') {
+            steps {
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh '/usr/local/bin/docker pull zricethezav/gitleaks:latest'
+                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/code zricethezav/gitleaks:latest detect --source="/code" --verbose'
+                    }
+
+                }
+                    
+                
+            }
+        }
+        stage('SAST with NodeJSScan') {
+            steps {
+                // Pull the latest NodeJSScan Docker image
+                sh '/usr/local/bin/docker pull opensecurity/nodejsscan:latest'
+                
+                // Run the scan on the project directory
+                sh '''
+                /usr/local/bin/docker run --rm -v $(pwd):/app opensecurity/nodejsscan:latest \
+                    --src /app --output /app/nodejsscan_report.json
+                '''
+                
+                // Display scan results if necessary
+                echo "NodeJSScan completed. Check nodejsscan_report.json for details."
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                    sh '/usr/local/bin/docker  login -u $USERNAME -p $PASSWORD'
+                    sh '/usr/local/bin/docker  build -t donfortune1/juice-shop:1.0 .'
+                    sh '/usr/local/bin/docker  push donfortune1/juice-shop:1.0'
+                }
+            }
+        }
+    }
+}
