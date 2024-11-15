@@ -1,7 +1,8 @@
-pipeline {
+hpipeline {
     agent any
     tools {
         nodejs 'node18'
+        docker_tool dock
     }
     stages {
         stage('Check Out') {
