@@ -55,6 +55,14 @@ pipeline {
                 sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src '
             }
         }
+        stage('SAST with semgrep') {
+            steps {
+                sh '/usr/local/bin/docker pull returntocorp/semgrep:latest'
+                sh '/usr/local/bin/docker run -v $WORKSPACE:/src returntocorp/semgrep:latest --config=p/r2c-ci /src'
+                sh 'pip3 install semgrep'
+                sh 'semgrep ci'
+            }
+        }
         stage('Build Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
