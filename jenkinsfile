@@ -66,6 +66,9 @@ pipeline {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto /src'
+                        //sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto --lang=javascript /src' // 
+                        // specify a specific langugage to be scanned e.g for javascript
+
                     }
                 }
             }
