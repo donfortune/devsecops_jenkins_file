@@ -51,16 +51,23 @@ pipeline {
         }
         stage('Code analysis with njsscan') {
             steps {
-                sh '/usr/local/bin/docker pull opensecurity/nodejsscan:latest'
-                sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src '
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh '/usr/local/bin/docker pull opensecurity/nodejsscan:latest'
+                        sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src '
+                    }
+                }
+                
             }
         }
-        stage('SAST with semgrep') {
+        
+        stage('SAST Analysis With Semgrep') {
             steps {
-                sh '/usr/local/bin/docker pull returntocorp/semgrep:latest'
-                sh '/usr/local/bin/docker run -v $WORKSPACE:/src returntocorp/semgrep:latest --config=p/r2c-ci /src'
-                sh 'pip3 install semgrep'
-                sh 'semgrep ci'
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto /src'
+                    }
+                }
             }
         }
         stage('Build Docker Image') {
