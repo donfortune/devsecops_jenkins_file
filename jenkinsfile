@@ -45,6 +45,7 @@ pipeline {
                         sh '/usr/local/bin/docker pull zricethezav/gitleaks:latest'
                         sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/code zricethezav/gitleaks:latest detect --source="/code"  --verbose --report-format=json --report="/code/gitleaks-report.json"'
                     }
+                    archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                 }
             }
             
