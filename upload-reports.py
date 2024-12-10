@@ -1,6 +1,6 @@
 import requests
 
-API_TOKEN = 'Token 0b9259d187edbd44d13e3e594bf2b473001cce4a'
+API_TOKEN = 'defectdojo_api_token'
 
 headers = {
     'Authorization': API_TOKEN
@@ -12,8 +12,8 @@ data = {
     'scan_type': 'Gitleaks Scan',
     'active': 'true',
     'verified': 'true',
-    'minimum_severity': 'low',
-    'engagement': '17',  # This is the engagement id
+    # 'minimum_severity': 'low',
+    'engagement': '21',  # This is the engagement id
 }
 
 files = {

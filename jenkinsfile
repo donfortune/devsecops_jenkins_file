@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('Check Out') {
             steps {
-                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://gitlab.com/twn-devsecops-bootcamp/latest/juice-shop']])
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://gitlab.com/twn-devsecops-bootcamp/latest/juice-shop.git']])
             }
         }
         stage('Build') {
@@ -23,7 +23,6 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Unstash node_modules cache if exists
                     try {
                         unstash 'node-modules'
                     } catch (e) {
@@ -31,8 +30,6 @@ pipeline {
                     }
                     
                     sh 'yarn install'
-
-                    // Stash node_modules for future use
                     stash includes: 'node_modules/**/*', name: 'node-modules'
                 }
                 sh 'yarn test'
@@ -43,22 +40,41 @@ pipeline {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         sh '/usr/local/bin/docker pull zricethezav/gitleaks:latest'
-                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/code zricethezav/gitleaks:latest detect --source="/code"  --verbose --report-format=json --report="/code/gitleaks-report.json"'
+                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/code zricethezav/gitleaks:latest detect --source="/code" --verbose --report-format=json --report-path="/code/gitleaks-report.json"'
                     }
                     archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                 }
             }
-            
         }
+        
+        stage('Upload Gitleaks Report to DefectDojo') {
+    steps {
+        withCredentials([string(credentialsId: 'defectdojo-api-token', variable: 'API_TOKEN')]) {
+            script {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh '''
+                    curl -X POST https://demo.defectdojo.org/api/v2/import-scan/ \
+                        -H "Authorization: Token ${API_TOKEN}" \
+                        -F 'scan_type=Gitleaks Scan' \
+                        -F 'active=true' \
+                        -F 'verified=true' \
+                        -F 'engagement=16' \
+                        -F "file=@gitleaks-report.json"
+                    '''
+                }
+            }
+        }
+    }
+}
+
         stage('Code analysis with njsscan') {
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         sh '/usr/local/bin/docker pull opensecurity/nodejsscan:latest'
-                        sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src --output /src/njsscan-report.json'
+                        sh '/usr/local/bin/docker run -v $WORKSPACE:/src opensecurity/njsscan:latest /src '
                     }
                 }
-                
             }
         }
         
@@ -66,10 +82,7 @@ pipeline {
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto /src --json > semgrep-report.json'
-                        //sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto --lang=javascript /src' // 
-                        // specify a specific langugage to be scanned e.g for javascript
-
+                        sh '/usr/local/bin/docker run --rm -v $WORKSPACE:/src returntocorp/semgrep semgrep --config=auto /src'
                     }
                 }
             }
