@@ -12,7 +12,7 @@ data = {
     'scan_type': 'Gitleaks Scan',
     'active': 'true',
     'verified': 'true',
-    # 'minimum_severity': 'low',
+    'minimum_severity': 'low',
     'engagement': '21',  # This is the engagement id
 }
 
